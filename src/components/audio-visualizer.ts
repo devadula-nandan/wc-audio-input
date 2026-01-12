@@ -14,12 +14,12 @@ export class AudioVisualizer extends LitElement {
       overflow: hidden;
       inline-size: 100%;
       justify-content: flex-end;
+      padding-inline-start: 12px;
     }
 
     .dot {
       width: 2px;
       background: currentColor;
-      border-radius: 1px;
       will-change: height;
     }
   `;
@@ -36,7 +36,7 @@ export class AudioVisualizer extends LitElement {
 
   private readonly MIN_FREQ = 800;
   private readonly MAX_FREQ = 8000;
-  private readonly NOISE_FLOOR = 12;
+  private readonly NOISE_FLOOR = 30;
 
   connectedCallback() {
     super.connectedCallback();
@@ -72,6 +72,14 @@ export class AudioVisualizer extends LitElement {
     this.resizeObserver.observe(this);
   }
 
+  private smoothCurve(values: number[]) {
+    const result = values.slice();
+    for (let i = 1; i < values.length - 1; i++) {
+      result[i] = values[i] * 0.6 + values[i - 1] * 0.2 + values[i + 1] * 0.2;
+    }
+    return result;
+  }
+
   private start() {
     if (this.rafId || !this.analyser || !this.audioContext) return;
 
@@ -83,12 +91,12 @@ export class AudioVisualizer extends LitElement {
     const loop = () => {
       if (!this.analyser || !this.data || !this.recording) return;
 
-      this.analyser.getByteFrequencyData(this.data as any);
+      this.analyser.getByteFrequencyData(this.data);
 
       const energy = this.data.reduce((a, b) => a + b, 0);
 
       if (energy < 120) {
-        this.dots = this.dots.map((h) => Math.max(2, h * 0.9));
+        this.dots = this.dots.map((h) => Math.max(2, h * 0.8));
         this.requestUpdate();
         this.rafId = requestAnimationFrame(loop);
         return;
@@ -98,7 +106,7 @@ export class AudioVisualizer extends LitElement {
       const minIndex = Math.floor((this.MIN_FREQ / nyquist) * this.data.length);
       const maxIndex = Math.floor((this.MAX_FREQ / nyquist) * this.data.length);
 
-      this.dots = this.dots.map((prev, i) => {
+      const raw = this.dots.map((prev, i) => {
         const t = i / (this.dots.length - 1);
         const logIndex = minIndex * Math.pow(maxIndex / minIndex, t);
         const index = Math.floor(logIndex);
@@ -107,10 +115,12 @@ export class AudioVisualizer extends LitElement {
         if (v < this.NOISE_FLOOR) v = 0;
 
         const normalized = Math.pow(v / 255, 1.4);
-        const target = 2 + normalized * 52;
+        const target = 2 + normalized * 64;
 
-        return prev * 0.85 + target * 0.15;
+        return prev * 0.75 + target * 0.25;
       });
+
+      this.dots = this.smoothCurve(raw);
 
       this.requestUpdate();
       this.rafId = requestAnimationFrame(loop);
@@ -127,7 +137,7 @@ export class AudioVisualizer extends LitElement {
       let done = true;
 
       this.dots = this.dots.map((h) => {
-        const next = h * 0.85;
+        const next = h * 0.8;
         if (next > 2.5) done = false;
         return Math.max(2, next);
       });
