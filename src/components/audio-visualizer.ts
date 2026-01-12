@@ -91,7 +91,7 @@ export class AudioVisualizer extends LitElement {
     const loop = () => {
       if (!this.analyser || !this.data || !this.recording) return;
 
-      this.analyser.getByteFrequencyData(this.data);
+      this.analyser.getByteFrequencyData(this.data as any);
 
       const energy = this.data.reduce((a, b) => a + b, 0);
 
