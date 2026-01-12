@@ -34,7 +34,8 @@ export class AudioInput extends LitElement {
   analyser?: AnalyserNode;
   private stream?: MediaStream;
 
-  private recognition?: SpeechRecognition;
+  // private recognition?: SpeechRecognition;
+  private recognition?: any;
 
   connectedCallback() {
     super.connectedCallback();
